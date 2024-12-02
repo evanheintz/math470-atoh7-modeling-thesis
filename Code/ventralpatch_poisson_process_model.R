@@ -214,6 +214,7 @@ sd[20] <-0.0000000001 # beta0
 
 st <- Sys.time()
 for (i in 1:tries){
+  set.seed(100*i)
   # sample from expanded data with size 5000 (can be altered)
   sample <- sample_n(sweetrain, 3000)
   # sample <- sample_n(data_expanded_final_new %>% select(x,y,t), 5000)
@@ -422,12 +423,12 @@ simulate_data_parameters <- function(sigma12=par_est_mean[1], sigma22=par_est_me
   
   x1 <- numeric()
   for(i in 1:length(x0)){
-    x1[[i]] <- ((x0[i]-d)/shrink[i]) + d + rnorm(1,5)
+    x1[[i]] <- ((x0[i]-d)/shrink[i]) + d 
   } #collapsing x points, if needed
   
   y1 <- numeric()
   for(i in 1:length(y0)){
-    y1[[i]] <- ((y0[i]-e)/shrink[i]) + e + rnorm(1,5)
+    y1[[i]] <- ((y0[i]-e)/shrink[i]) + e 
   } #collapsing y points, if needed
   
   x <- data.frame(x=x1)
