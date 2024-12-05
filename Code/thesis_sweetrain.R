@@ -21,7 +21,7 @@ theme_set(theme_minimal())
 
 
 if (file.exists('/Users/evanheintz')) {
-  sweetrain <- read.csv("/Users/evanheintz/Dropbox/Evan_Thesis/Data/sweetrain_processed.csv")
+  sweetrain <- read.csv("/Users/evanheintz/Dropbox/Evan_Thesis/math470-atoh7-modeling-thesis/Data/sweetrain_processed.csv")
 } else {
   # sweetrain <- enter file path for sweetrain
 }
@@ -182,18 +182,19 @@ error <- c()
 for(i in 1:20){
   if(i %in% 1:19){
     data_preds_all <- data_test_preds %>% select(-intensity) %>% mutate(preds = as.numeric(ifelse(preds < quantile(preds, i/20), 0, 1)))
-    error[i] <- sqrt(sum(data_preds_all$preds - data_test_new$intensity)^2)
+    error[i] <- mean(sum(data_preds_all$preds - data_test_new$intensity)^2)
   } else{ # where i=20 will use the mean as a cutoff
     data_preds_all <- data_test_preds %>% select(-intensity) %>% mutate(preds = as.numeric(ifelse(preds < mean(preds), 0, 1)))
-    error[i] <- sqrt(sum(data_preds_all$preds - data_test_new$intensity)^2)
+    error[i] <- mean(sum(data_preds_all$preds - data_test_new$intensity)^2)
   }
 }
 plot(error)
 
 quantile <- which.min(error)/20
-data_preds_all <- data_test_preds %>% select(-intensity) %>% mutate(preds = as.numeric(ifelse(preds < mean(preds), 0, 1))) # quantile(preds,quantile)
+data_preds_all <- data_test_preds %>% select(-intensity) %>% mutate(preds = as.numeric(ifelse(preds < quantile(preds, 0.91), 0, 1))) # quantile(preds,quantile)
 min <- min((data_preds_all %>%  filter(preds == 1))$t)
 # find smallest error that includes all time points
+# 0.91 in the quantile() function gives the smallest error while still including all timepoints
   
 p4 <- ggplot(data=sample_n(data_preds_all %>% filter(preds==1), 10000), 
              aes(x = x, y = y, color = t)) + geom_point(alpha=0.8) + 
@@ -601,7 +602,7 @@ p4
 grid.arrange(p1,p3,p4,p2)
 
 #cluster robust SE
-crse <- sqrt(diag(vcovCL(logistic_expanded_all_new, cluster=data_expanded_train_new$time, type="HC0")))
+crse <- sqrt(diag(vcovCL(logistic_expanded_all_new, cluster=data_expanded_train_new$t, type="HC0")))
 
 coefs <- numeric(9)
 for(i in 1:9){
@@ -684,6 +685,8 @@ updated_log_reg_ventral <- glm(intensity ~ x + y + t + angle(x=x,y=y) +
                                     radial(x=x,y=y) + angle(x=x,y=y):t + radial(x=x,y=y):t), 
                        data=data_expanded_train_new, family="binomial")
 
+summary(updated_log_reg_ventral)
+
 
 
 unique_coords_v <- unique(data.frame(x = data_final_new$x, y= data_final_new$y,
@@ -739,8 +742,7 @@ for(i in 2:timesteps){
   }
 }
 
-ggplot(sample_n(data,5000), aes(x=x,y=y,color=t))+geom_point()+scale_color_viridis_c()
-
+ggplot(sample_n(data,5000), aes(x=x,y=y,color=t))+geom_point()+scale_color_viridis_c(limits=c(0,timesteps))
 
 
 

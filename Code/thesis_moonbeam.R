@@ -20,7 +20,7 @@ lapply(packages, library, character.only = TRUE)
 theme_set(theme_minimal())
 
 if (file.exists('/Users/evanheintz')) {
-  moonbeam <- read.csv("/Users/evanheintz/Dropbox/Evan_Thesis/Data/moonbeam_processed.csv")
+  moonbeam <- read.csv("/Users/evanheintz/Dropbox/Evan_Thesis/math470-atoh7-modeling-thesis/Data/moonbeam_processed.csv")
 } else {
   # moonbeam <- enter file path for moonbeam
 }
@@ -153,15 +153,15 @@ error <- c()
 for(i in 1:20){
   if(i %in% 1:19){
     data_preds_all <- data_test_preds %>% select(-intensity) %>% mutate(preds = as.numeric(ifelse(preds < quantile(preds, i/20), 0, 1)))
-    error[i] <- sqrt(sum(data_preds_all$preds - data_test_new$intensity)^2)
+    error[i] <- mean(sum(data_preds_all$preds - data_test_new$intensity)^2)
   } else{ # where i=20 will use the mean as a cutoff
     data_preds_all <- data_test_preds %>% select(-intensity) %>% mutate(preds = as.numeric(ifelse(preds < mean(preds), 0, 1)))
-    error[i] <- sqrt(sum(data_preds_all$preds - data_test_new$intensity)^2)
+    error[i] <- mean(sum(data_preds_all$preds - data_test_new$intensity)^2)
   }
 }
 plot(error)
 
-data_preds_all <- data_test_preds %>% select(-intensity) %>% mutate(preds = as.numeric(ifelse(preds < mean(preds), 0, 1))) # quantile(preds,which.min(error)/20)
+data_preds_all <- data_test_preds %>% select(-intensity) %>% mutate(preds = as.numeric(ifelse(preds < quantile(preds,which.min(error)/20), 0, 1))) # quantile(preds,which.min(error)/20)
 min <- min((data_preds_all %>%  filter(preds == 1))$t)
 # find smallest error that includes all time points
 
@@ -172,7 +172,15 @@ p4
 
 
 #cluster robust SE
-sqrt(diag(vcovCL(logistic_all_new, cluster=data_train_new$time, type="HC0")))
+crse <- sqrt(diag(vcovCL(logistic_all_new, cluster=data_train_new$t, type="HC0")))
+
+coefs <- numeric(9)
+for(i in 1:9){
+  coefs[i] <- as.numeric(logistic_all_new$coefficients[i])
+}
+
+z <- coefs/crse
+pvalues <- 2*pnorm(-1*abs(z))
 
 
 
