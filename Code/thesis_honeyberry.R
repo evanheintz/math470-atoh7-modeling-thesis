@@ -95,6 +95,7 @@ dist <- function(data,timesteps){
 
 #-----functions-----#
 # radial
+# run hull center (further below in this script) first!
 radial <- function(x,y){
   sqrt((x - hull_center[1])^2 + (y - hull_center[2])^2)
 }
@@ -486,8 +487,15 @@ p4 <- ggplot(data=sample_n((data_preds_all %>%  filter(preds == 1)), length(hone
 grid.arrange(p4,p2)
 
 #cluster robust SE
-sqrt(diag(vcovCL(logistic_expanded_all_new, cluster=data_expanded_train_new$time, type="HC0")))
+crse <- sqrt(diag(vcovCL(logistic_expanded_all_new, cluster=data_expanded_train_new$time, type="HC0")))
 
+coefs <- numeric(9)
+for(i in 1:9){
+  coefs[i] <- as.numeric(logistic_expanded_all_new$coefficients[i])
+}
+
+z <- coefs/crse
+pvalues <- 2*pnorm(-1*abs(z))
 
 
 
