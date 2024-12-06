@@ -96,7 +96,7 @@ dist <- function(data,timesteps){
 }
 
 #-----functions-----#
-#skip to line 191 to compute hull_center
+#skip to line 233 to compute hull_center
 # radial
 radial <- function(x,y){
   sqrt((x - hull_center[1])^2 + (y - hull_center[2])^2)
@@ -517,11 +517,6 @@ ggplot(sample_n(data_expanded_final_new %>% filter(intensity==1),100000), aes(x=
 data_expanded_final_new <- data_expanded_final_new %>% filter(t < 74)
 
 
-x <- data_expanded_final_new$x
-y <- data_expanded_final_new$y
-data_expanded_final_new$x <- y
-data_expanded_final_new$y <- x
-
 
 set.seed(470)
 split <- sample(c(TRUE, FALSE), nrow(data_expanded_final_new), replace=TRUE, prob=c(0.7,0.3))
@@ -591,11 +586,11 @@ for(i in 1:20){
 }
 plot(error)
 
-data_preds_all <- data_test_preds %>% select(-intensity) %>% mutate(preds = as.numeric(ifelse(preds < mean(preds), 0, 1))) # quantile(preds,which.min(error)/20)
+data_preds_all <- data_test_preds %>% select(-intensity) %>% mutate(preds = as.numeric(ifelse(preds < quantile(preds,0.92), 0, 1))) # quantile(preds,which.min(error)/20)
 min <- min((data_preds_all %>%  filter(preds == 1))$t)
 # find smallest error that includes all time points
 
-p4 <- ggplot(data=sample_n((data_preds_all %>%  filter(preds == 1)), 10000), aes(x = x, y = y, color = t)) + geom_point(alpha=0.8) + 
+p4 <- ggplot(data=sample_n((data_preds_all %>%  filter(preds == 1)), 100000), aes(x = x, y = y, color = t)) + geom_point(alpha=0.3) + 
   scale_color_viridis_c() #+ labs(title="All") 
 p4
 
