@@ -162,11 +162,11 @@ for(i in 1:20){
 }
 plot(error)
 
-data_preds_all <- data_test_preds %>% select(-intensity) %>% mutate(preds = as.numeric(ifelse(preds < quantile(preds,which.min(error)/20), 0, 1))) # quantile(preds,which.min(error)/20)
+data_preds_all <- data_test_preds %>% select(-intensity) %>% mutate(preds = as.numeric(ifelse(preds < quantile(preds,0.77), 0, 1))) # quantile(preds,which.min(error)/20)
 min <- min((data_preds_all %>%  filter(preds == 1))$t)
 # find smallest error that includes all time points
 
-p4 <- ggplot(data=sample_n((data_preds_all %>%  filter(preds == 1)), 10000), aes(x = x, y = y, color = t)) + geom_point(alpha=0.8) + 
+p4 <- ggplot(data=sample_n((data_preds_all %>%  filter(preds == 1)), 100000), aes(x = x, y = y, color = t)) + geom_point(alpha=0.3)+
   scale_color_viridis_c() #+ labs(title="All") 
 p4
 
@@ -453,6 +453,11 @@ st <- Sys.time()
 data_expanded_final_new <- dist(data=data_new,timesteps=timesteps)
 print(Sys.time()-st)
 
+x <- data_expanded_final_new$x
+y <- data_expanded_final_new$y
+data_expanded_final_new$x <- y
+data_expanded_final_new$y <- x
+
 ggplot(sample_n(data_expanded_final_new %>% filter(intensity==1),40000), aes(x=x,y=y,color=t)) + geom_point()
 
 
@@ -489,15 +494,31 @@ p2 <- ggplot(moonbeam, aes(x = x, y = y, color = t)) + geom_point(alpha=0.3) +
 
 data_test_preds <- data_expanded_test_new
 preds <- predict(logistic_expanded_all_new, data_test_preds, type="response")
-data_preds_all <- data_test_preds %>% mutate(preds = as.numeric(ifelse(preds < mean(preds), 0, 1)))
 
-p4 <- ggplot(data=sample_n((data_preds_all %>%  filter(preds == 1)), length(moonbeam$t)), aes(x = y, y = x, color = t)) + geom_point(alpha=0.3) + 
-  scale_color_viridis_c() + labs(title="All")
+error <- c()
+for(i in 1:20){
+  if(i %in% 1:19){
+    data_preds_all <- data_test_preds %>% select(-intensity) %>% mutate(preds = as.numeric(ifelse(preds < quantile(preds, i/20), 0, 1)))
+    error[i] <- sqrt(sum(data_preds_all$preds - data_expanded_test_new$intensity)^2)
+  } else{ # where i=20 will use the mean as a cutoff
+    data_preds_all <- data_test_preds %>% select(-intensity) %>% mutate(preds = as.numeric(ifelse(preds < mean(preds), 0, 1)))
+    error[i] <- sqrt(sum(data_preds_all$preds - data_expanded_test_new$intensity)^2)
+  }
+}
+plot(error)
+
+data_preds_all <- data_test_preds %>% select(-intensity) %>% mutate(preds = as.numeric(ifelse(preds < quantile(preds, 0.75), 0, 1))) # quantile(preds,which.min(error)/20)
+min <- min((data_preds_all %>%  filter(preds == 1))$t)
+# find smallest error that includes all time points
+
+p4 <- ggplot(data=sample_n((data_preds_all %>%  filter(preds == 1)), 100000), aes(x = x, y = y, color = t)) + geom_point(alpha=0.3) + 
+  scale_color_viridis_c() 
+p4
 
 grid.arrange(p4,p2)
 
 #cluster robust SE
-crse <- sqrt(diag(vcovCL(logistic_expanded_all_new, cluster=data_expanded_train_new$time, type="HC0")))
+crse <- sqrt(diag(vcovCL(logistic_expanded_all_new, cluster=data_expanded_train_new$t, type="HC0")))
 
 coefs <- numeric(9)
 for(i in 1:9){
@@ -574,5 +595,5 @@ for(i in 2:timesteps){
   }
 }
 
-ggplot(sample_n(data,5000), aes(x=x,y=y,color=t))+geom_point()+scale_color_viridis_c()
+ggplot(sample_n(data,5000), aes(x=x,y=y,color=t))+geom_point()+scale_color_viridis_c(limits=c(0,timesteps))
 
