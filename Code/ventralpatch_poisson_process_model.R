@@ -282,15 +282,7 @@ for (i in 1:tries){
   print(Sys.time() - start) 
   print(i)
 }
-print(Sys.time()-st)
-
-
-# running overnight
-#---------------------
-par_est <- as.data.frame(matrix(NA, nrow = tries, ncol = 20))
-i <- 1 
-
-repeat {
+print(Sys.tim
   #sample <- sample_n(data_expanded_final_new %>% select(x,y,t), 3000)
   sample <- sample_n(sweetrain,3000)
   
@@ -341,6 +333,14 @@ for(i in 1:length(theta1)){
 #simulate data
 set.seed(343)
 
+compress_points <- function(x, y, d, e) {
+  shrink <- sqrt((x - d)^2 / d^2 + (y - e)^2 / e^2)
+  shrink[shrink < 1] <- 1 # points inside the ellipse remain
+  x_compressed <- ((x - d) / shrink) + d
+  y_compressed <- ((y - e) / shrink) + e
+  data.frame(x = x_compressed, y = y_compressed)
+}
+
 
 simulate_data_parameters <- function(sigma12=par_est_mean[1], sigma22=par_est_mean[2], 
                                      h=par_est_mean[3], d=par_est_mean[4], e=par_est_mean[5], 
@@ -352,7 +352,7 @@ simulate_data_parameters <- function(sigma12=par_est_mean[1], sigma22=par_est_me
                                      minor=par_est_mean[17], xcent=par_est_mean[18],
                                      ycent=par_est_mean[19],
                                      beta0 = par_est_mean[20]){ 
-  a = 2*pi/tau1 
+  a = 2*pi/(tau1 - tau3) 
   #a is defined in terms of tau1
   
   max <- beta0 + max(int, h / sqrt(2 * pi * sigma12) + p / sqrt(2 * pi * sigma22))
@@ -399,10 +399,10 @@ simulate_data_parameters <- function(sigma12=par_est_mean[1], sigma22=par_est_me
   ventral <- c(ventral, rep(0,length(no_ventral_time$t)))
   
   lambdas_rotational <- c(rep(0,length(ventral_time$t)),
-                          (no_ventral_time$t <= tau1) * (h / (2 * pi * sigma12)) * exp( - ((no_ventral_time$x - xoft)^2 + (no_ventral_time$y - yoft)^2) / (2 * sigma12) ))
+                          (no_ventral_time$t <= tau1 & no_ventral_time$t>=tau3) * (h / (2 * pi * sigma12)) * exp( - ((no_ventral_time$x - xoft)^2 + (no_ventral_time$y - yoft)^2) / (2 * sigma12) ))
   #rotational intensity function component
   
-  lambdas_radial <- c(rep(0,length(ventral_time$t)), (no_ventral_time$t <= tau2) * (p / sqrt(2 * pi * sigma22)) * exp( - (sqrt((no_ventral_time$x - d)^2 + (no_ventral_time$y - e)^2/m^2) - k*no_ventral_time$t)^2 / (2 * sigma22)))
+  lambdas_radial <- c(rep(0,length(ventral_time$t)), (no_ventral_time$t <= tau2 & no_ventral_time$t>=tau3) * (p / sqrt(2 * pi * sigma22)) * exp( - (sqrt((no_ventral_time$x - d)^2 + (no_ventral_time$y - e)^2/m^2) - k*(no_ventral_time$t - tau3))^2 / (2 * sigma22)))
   #radial intensity function component
   
   lambda <- beta0 + ventral + lambdas_rotational + lambdas_radial
@@ -412,31 +412,13 @@ simulate_data_parameters <- function(sigma12=par_est_mean[1], sigma22=par_est_me
   
   retain_indices <- runif(starting)<=prob
   
-  x0 <- x_vec[retain_indices] 
-  y0 <- y_vec[retain_indices]
+  x <- x_vec[retain_indices] 
+  y <- y_vec[retain_indices]
   t <- t_vec[retain_indices]
   
-  shrink <- numeric()
-  for(i in 1:length(x0)){
-    ifelse((x0[i]-d)^2/d^2 + (y0[i]-e)^2/e^2 >= 1, shrink[[i]] <- sqrt((x0[i]-d)^2/d^2 + (y0[i]-e)^2/e^2), shrink[[i]] <- 1)
-  } #if points are outside radius, assign a value for collapsing
+  data_compressed <- cbind(compress_points(x=x, y=y, d=d, e=e), t)
   
-  x1 <- numeric()
-  for(i in 1:length(x0)){
-    x1[[i]] <- ((x0[i]-d)/shrink[i]) + d 
-  } #collapsing x points, if needed
-  
-  y1 <- numeric()
-  for(i in 1:length(y0)){
-    y1[[i]] <- ((y0[i]-e)/shrink[i]) + e 
-  } #collapsing y points, if needed
-  
-  x <- data.frame(x=x1)
-  y <- data.frame(y=y1)
-  t <- data.frame(t=t)
-  
-  data <- cbind(x, y, t)
-  return(data)
+  return(data_compressed)
   
 }
 
